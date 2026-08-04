@@ -83,12 +83,15 @@ async def get_history(symbol: str):
             if hist.empty:
                 return []
 
-        # Convert index to string dates and collect close prices
+        # Convert index to string dates and collect OHLC prices
         results = []
         for date, row in hist.iterrows():
             results.append({
-                "date": date.strftime("%m-%d"),
-                "price": float(row["Close"])
+                "time": date.strftime("%Y-%m-%d"),
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"])
             })
             
         return results
