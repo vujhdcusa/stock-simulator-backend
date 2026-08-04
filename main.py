@@ -28,7 +28,9 @@ async def get_quotes(symbols: str = "2330,2317,2454,2303"):
         data = twstock.realtime.get(symbol_list)
         results = []
         for symbol, info in data.items():
-            if info['success']:
+            if symbol == 'success' or symbol == 'rtmessage':
+                continue
+            if isinstance(info, dict) and info.get('success'):
                 realtime = info['realtime']
                 info_data = info['info']
                 
