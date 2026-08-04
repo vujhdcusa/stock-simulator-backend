@@ -1,3 +1,4 @@
+import yfinance as yf
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import twstock
@@ -54,6 +55,42 @@ async def get_quotes(symbols: str = "2330,2317,2454,2303"):
                     "price": price,
                     "change": 0.0 # Placeholder for change
                 })
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/history")
+async def get_history(symbol: str):
+    """
+    Fetch 1-month historical stock prices using yfinance.
+    """
+    if not symbol:
+        raise HTTPException(status_code=400, detail="No symbol provided")
+    
+    try:
+        # TWSE stocks have a .TW suffix on Yahoo Finance
+        yf_symbol = f"{symbol}.TW"
+        ticker = yf.Ticker(yf_symbol)
+        
+        # Get 1 month of historical data
+        hist = ticker.history(period="1mo")
+        
+        if hist.empty:
+            # Maybe it's a Taipei Exchange (OTC) stock, suffix is .TWO
+            yf_symbol = f"{symbol}.TWO"
+            ticker = yf.Ticker(yf_symbol)
+            hist = ticker.history(period="1mo")
+            if hist.empty:
+                return []
+
+        # Convert index to string dates and collect close prices
+        results = []
+        for date, row in hist.iterrows():
+            results.append({
+                "date": date.strftime("%m-%d"),
+                "price": float(row["Close"])
+            })
+            
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
