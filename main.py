@@ -197,8 +197,12 @@ async def get_quotes(symbols: str = "2330,2317,2454,2303"):
                 
                 # Fetch fast_info which is much quicker than history
                 info = ticker.fast_info
-                last_price = info.get("last_price")
-                prev_close = info.get("previous_close")
+                
+                try:
+                    last_price = info.last_price
+                    prev_close = info.previous_close
+                except:
+                    continue
                 
                 if last_price is None or prev_close is None:
                     continue
