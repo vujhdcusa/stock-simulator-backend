@@ -185,33 +185,44 @@ async def get_quotes(symbols: str = "2330,2317,2454,2303"):
         raise HTTPException(status_code=400, detail="No symbols provided")
 
     try:
-        data = twstock.realtime.get(symbol_list)
+        yf_symbols = [f"{s}.TW" for s in symbol_list]
+        tickers = yf.Tickers(" ".join(yf_symbols))
+        
         results = []
-        for symbol, info in data.items():
-            if symbol == 'success' or symbol == 'rtmessage':
-                continue
-            if isinstance(info, dict) and info.get('success'):
-                realtime = info['realtime']
-                info_data = info['info']
+        for i, s in enumerate(symbol_list):
+            try:
+                ticker = tickers.tickers.get(f"{s}.TW")
+                if not ticker:
+                    continue
                 
-                latest_price = realtime.get('latest_trade_price', '-')
-                if latest_price == '-':
-                    latest_price = realtime.get('open', '-')
-                    if latest_price == '-':
-                        bids = realtime.get('best_bid_price', [])
-                        if bids and bids[0] != '-':
-                            latest_price = bids[0]
-                        else:
-                            latest_price = '0'
-
-                price = float(latest_price)
+                # Fetch fast_info which is much quicker than history
+                info = ticker.fast_info
+                last_price = info.get("last_price")
+                prev_close = info.get("previous_close")
+                
+                if last_price is None or prev_close is None:
+                    continue
+                    
+                change = last_price - prev_close
+                
+                # We can fallback to the symbol itself if name is too slow to fetch
+                name = s
+                try:
+                    if s in twstock.codes:
+                        name = twstock.codes[s].name
+                except:
+                    pass
                 
                 results.append({
-                    "symbol": info_data.get('code', symbol),
-                    "name": info_data.get('name', symbol),
-                    "price": price,
-                    "change": 0.0 
+                    "symbol": s,
+                    "name": name,
+                    "price": float(last_price),
+                    "change": float(change)
                 })
+            except Exception as e:
+                print(f"Error fetching {s}: {e}")
+                continue
+                
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
